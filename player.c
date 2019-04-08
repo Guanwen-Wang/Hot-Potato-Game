@@ -233,7 +233,7 @@ int main(int argc, char *argv[])
     int isrecv_n = recv(nextplayer_fd, next_ready, 35, 0);
     next_ready[35] = 0;
     if(isrecv_n == 0 || isrecv_n == -1){
-      printf("I dont receive any from next player\n");
+      // printf("I dont receive any from next player\n");
     }
     else if(isrecv_n){
       //printf("Message received from next player: %s\n", next_ready);
@@ -241,10 +241,9 @@ int main(int argc, char *argv[])
 
     //****** waiting for all_ready from ringmaster *******//
     //printf("waiting last_connection from ringmaster\n");
-    int last_connection = 0;
-    recv(socket_fd, &last_connection, 1, 0);
-    //printf("receive last_connection: %d\n", last_connection);
-
+    //    int last_connection = 0;
+    //    recv(socket_fd, &last_connection, 1, 0);
+    //    printf("receive last_connection: %d\n", last_connection);
     int recv_len = recv(socket_fd, &prev_hostname, sizeof(prev_hostname), 0);
     prev_hostname[20] = 0;
     //printf("Receive prev player hostname: %s\n", prev_hostname);
@@ -325,12 +324,13 @@ int main(int argc, char *argv[])
     
     //******** waiting connection for next player *******//    
     //printf("Waiting for connection of next player [%d]...\n", player_n + 1);
-    
-    int connection_next = 1;
-    send(socket_fd, &connection_next, 1, 0);
+
+    if(player_n == player_total - 1){
+      int connection_next = 1;
+      send(socket_fd, &connection_next, 1, 0);
+    }
     
     nextplayer_fd = accept(socket_fd_n, (struct sockaddr *)&socket_addr_n, &socket_addr_len_n);
-
         
     if (nextplayer_fd == -1) {
       printf("Error: cannot accept connection on next player\n");
@@ -357,16 +357,38 @@ int main(int argc, char *argv[])
   //************ from ringmaster: wait to receive potato *******//
   //printf("\n waiting the ringmaster starts the game\n");
   potato player_potato;
+  player_potato.player_num = -1;
+  player_potato.hop_num = -1;
+  player_potato.start_player = -1;
+  player_potato.next_player = -1;
+  player_potato.game_ended = -1;
+  memset(player_potato.trace, 512, 0);
+
   int isrecv_p = recv(socket_fd, &player_potato, sizeof(potato), 0);
-  //  printf("player_potato.start_player = %d\n", player_potato.start_player);
   player_potato.player_num = player_total;
+  //  printf("player_potato.start_player = %d\n", player_potato.start_player);
+  //  printf("player_n = %d\n", player_n);
+
   if(player_potato.start_player == player_n){
     //printf("I am the starter and got potato with %d hops\n", player_potato.hop_num);
     player_potato.trace[0] = player_n;
     //    printf("player_potato.trace[0] = %d\n", player_potato.trace[0]);
-    if(send_potato(player_n, player_potato, socket_fd_p, nextplayer_fd) == -1){
-      printf("send_potato ERROR\n");
-      return -1;
+    if(player_potato.hop_num > 0){
+      if(send_potato(player_n, player_potato, socket_fd_p, nextplayer_fd) == -1){
+	printf("send_potato ERROR\n");
+	return -1;
+      }
+    }
+    else if(player_potato.hop_num == 0){
+      //send back to ringmaster
+      printf("I'm it\n");
+      
+      if(send(socket_fd, &player_potato, sizeof(potato), 0) == -1){
+	printf("send potato back ERROR!!!\n");
+      }
+      else{
+	//printf("send potato back SUCCESS!!!\n");
+      }
     }
   }
   else{
@@ -376,7 +398,7 @@ int main(int argc, char *argv[])
 
 
   while(1){
-    //    printf("wait to receive the potato\n");
+    //printf("wait to receive the potato\n");
     fd_set read_fds;
     int fdmax = 0;
     FD_ZERO(&read_fds);
@@ -438,7 +460,7 @@ int main(int argc, char *argv[])
 	  player_potato.hop_num = 1000;
 	}
 	else if(player_potato.hop_num == 0){
-	  printf("I am it!!!\n");
+	  printf("I'm it\n");
 	  player_potato.trace[total_hop - player_potato.hop_num - 1] = player_n;
 	  // 把土豆儿送回给ringmaster
 	  send(socket_fd, &player_potato, sizeof(potato), 0);
@@ -464,7 +486,7 @@ int main(int argc, char *argv[])
 	continue;
       }
       if(player_potato.next_player == player_n){
-	//	printf("I got the potato with %d hops left\n", player_potato.hop_num);
+	//printf("I got the potato with %d hops left\n", player_potato.hop_num);
 	if(player_potato.hop_num > 0){
 	  //判断前一个trace是否正确
 	  if(player_n != player_total -1 && player_potato.trace[total_hop - player_potato.hop_num - 2] != player_n + 1){
@@ -482,7 +504,7 @@ int main(int argc, char *argv[])
 	  player_potato.hop_num = 1000;
 	}
 	else if(player_potato.hop_num == 0){
-	  printf("I am it!!!\n");
+	  printf("I'm it\n");
 	  player_potato.trace[total_hop - player_potato.hop_num - 1] = player_n;
 	  /// potato trace
 	  /*printf("Potato trace: ");

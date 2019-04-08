@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
     send(client_connection_fd[i], &mypotato.hop_num, sizeof(int), 0);
     if(i != 0){
       send(client_connection_fd[i], &player_hostname[i-1], sizeof(player_hostname[i-1]), 0);
-      //      printf("Send player %d hostname: %s TO player %d\n\n", i-1, player_hostname[i-1], i);
+      //printf("Send player %d hostname: %s TO player %d\n\n", i-1, player_hostname[i-1], i);
     }
 
 
@@ -137,25 +137,22 @@ int main(int argc, char *argv[])
 
 
   //***** send last connection to player 0 *******//
-  //  printf("waiting for last connection signal\n");
+  //printf("waiting for last connection signal\n");
   int last_connection = 0;
   recv(client_connection_fd[mypotato.player_num - 1], &last_connection, 1, 0);
   if(last_connection == 0){
-    printf("last player connection not established\n");
+     printf("last player connection not established\n");
     return -1;
   }
   else if(last_connection == 1){
-    //    printf("last player connection set\n\n");
-    send(client_connection_fd[0], &last_connection, 1, 0);
+    //  printf("last player connection set\n\n");
+	//    send(client_connection_fd[0], &last_connection, 1, 0);
     send(client_connection_fd[0], &player_hostname[mypotato.player_num-1], 20, 0);
-    //    printf("Send player %d hostname: %s TO player 0\n\n", mypotato.player_num-1, player_hostname[mypotato.player_num-1]);
+    //      printf("Send player %d hostname: %s TO player 0\n\n", mypotato.player_num-1, player_hostname[mypotato.player_num-1]);
   }
   
-
-
-  
   if(mypotato.hop_num == 0){
-    printf("Hop number is zero, ganme is over\n");
+    //printf("Hop number is zero, ganme is over\n");
     freeaddrinfo(host_info_list);
     close(socket_fd);
     return 0;
@@ -166,17 +163,20 @@ int main(int argc, char *argv[])
   srand((unsigned int)time(NULL) + start_p);
   start_p = rand() % mypotato.player_num;
   mypotato.start_player = start_p;
-  printf("Ready to start the game, sending potato to player %d\n", start_p);
+  //printf("Ready to start the game, sending potato to player %d\n", start_p);
   mypotato.hop_num -= 1;
-  for(int i = 0; i < mypotato.player_num; i++){
+  if(mypotato.hop_num == 0)
+    mypotato.start_player = 0;
+  
+  for(int i = 0; i < mypotato.player_num; ++i){
     send(client_connection_fd[i], &mypotato, sizeof(potato), 0);
   }
-  if(mypotato.hop_num == 0){
+  /*  if(mypotato.hop_num == 0){
     printf("Hop number is 1, cannot send to start player and game over\n");
     freeaddrinfo(host_info_list);
     close(socket_fd);
     return 0;
-  }
+    }*/
   
   //*********** wait for potato back **********//
   fd_set read_fds;
